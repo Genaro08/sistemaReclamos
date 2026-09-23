@@ -1,101 +1,108 @@
 # Plan de Trabajo Incremental - Sistema de Gestión de Reclamos
 
-Este documento sirve como registro continuo y trazable de la arquitectura, las decisiones técnicas y el progreso incremental del proyecto.
+Este documento es la guía de diseño, arquitectura y roadmap específico de este proyecto.
 
 ---
 
-## 📌 Información General
+## 📌 1. Estructura Backend Completa
 
-* **Proyecto**: Sistema de Gestión de Reclamos e Historial Interno
-* **Arquitectura**: Monolito Modular Backend (FastAPI) + SPA Frontend (React + TS + Vite)
-* **Base de Datos**: PostgreSQL (Supabase / Local) desacoplada mediante SQLAlchemy 2.0 y Alembic
-* **Despliegue**: Frontend y Backend en Vercel (Serverless)
-
----
-
-## 🛠️ Convenciones del Proyecto
-
-1. **Idioma**: Dominio y comentarios en **Español**.
-2. **Nomenclatura**:
-   * Archivos y variables/funciones backend: `camelCase` en español (ej: `usuarioService.py`, `reclamoRouter.py`, `obtenerReclamos`).
-   * Clases e Interfaces: `PascalCase` (ej: `Usuario`, `ReclamoService`).
-   * Base de datos: Tablas y columnas relacionales en español (ej: `usuarios`, `reclamos`, `historialReclamos`).
-   * API REST: JSON en `camelCase` mediante configuraciones Pydantic.
-3. **Comentarios**: Informativos, concisos y sin elementos decorativos.
-
----
-
-## 🚀 Estado de Avance por Etapas
-
-### [x] Etapa 1: Inicialización y Configuración Base
-* **Backend**:
-  * Entorno `.venv` creado con `fastapi`, `sqlalchemy`, `alembic`, `pydantic-settings`, `psycopg2-binary`.
-  * Archivo `backend/app/core/configuracion.py` desacoplado leyendo variables del archivo `.env`.
-  * Inyección de sesión SQLAlchemy con `pool_pre_ping=True` en `backend/app/db/sesion.py`.
-  * Manejo global de excepciones en `backend/app/core/excepciones.py`.
-  * Endpoint `/api/v1/health` para verificación de estado del servidor y la BD relacional.
-  * Alembic configurado y sincronizado dinámicamente con la base de datos.
-* **Frontend**:
-  * Aplicación React + TypeScript + Vite inicializada en `frontend/` con dependencias instaladas.
+```text
+backend/
+├── app/
+│   ├── api/          # Rutas REST (Endpoints de FastAPI que reciben peticiones HTTP)
+│   ├── core/         # Configuración central (Pydantic Settings para .env), seguridad y errores
+│   ├── db/           # Conexión a PostgreSQL mediante SQLAlchemy (Motor y Sesiones)
+│   ├── models/       # Modelos ORM (Clases Python que definen las tablas de la BD)
+│   ├── schemas/      # Esquemas Pydantic (Validadores de los datos JSON de la API)
+│   └── services/     # Capa de Lógica de Negocio (Servicios para mantener routers delgados)
+├── alembic/          # Control de versiones de la base de datos (Migraciones SQL)
+├── tests/            # Pruebas automatizadas con Pytest
+├── .env              # Variables secretas (URL de Supabase, JWT Secret) - Ignorado en Git
+├── .env.example      # Plantilla con los nombres de variables necesarios
+├── alembic.ini       # Archivo de configuración general de Alembic
+├── pytest.ini        # Configuración de ejecutor de pruebas Pytest
+└── main.py           # Punto de entrada de la aplicación FastAPI
+```
 
 ---
 
-### [ ] Etapa 2: Usuarios, Autenticación JWT y Roles (En Proceso)
-* Modelo SQLAlchemy `Usuario` (roles: `USER`, `OPERATOR`, `ADMIN`).
-* Esquemas Pydantic `usuarioSchema.py`.
-* Hashing `bcrypt` y Tokens JWT (`seguridad.py` y `authService.py`).
-* Endpoints `/api/v1/auth/registro`, `/login`, `/me`.
-* Inyector de dependencias RBAC (control de acceso por roles).
-* Primera migración de tabla `usuarios` en la BD.
+## 🗄️ 2. Modelo Relacional Definitivo de Base de Datos (6 Tablas)
+
+### 1. `usuarios`
+* `id`: INT (Primary Key, Autoincremental)
+* `nombre`: VARCHAR(75)
+* `apellido`: VARCHAR(75)
+* `email`: VARCHAR(255) (Único, Indexado)
+* `passwordHash`: VARCHAR(255)
+* `rol`: ENUM ('USER', 'OPERATOR', 'ADMIN') Default 'USER'
+* `activo`: BOOLEAN Default True
+* `fechaCreacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+
+### 2. `categorias` (Catálogo de Clasificación)
+* `id`: INT (Primary Key, Autoincremental)
+* `nombre`: VARCHAR(100) (Único - ej: "Hardware", "Software", "Redes")
+* `descripcion`: TEXT (Nullable)
+* `activa`: BOOLEAN Default True
+
+### 3. `articulosConocimiento` (Módulo Documental / KCS)
+* `id`: INT (Primary Key, Autoincremental)
+* `titulo`: VARCHAR(200) (ej: "Procedimiento de reconfiguración VPN")
+* `contenido`: TEXT (Manual técnico profundo / Diagnóstico interno)
+* `respuestaPredeterminada`: TEXT (Nullable - Plantilla de respuesta corta para usuario)
+* `modoRespuesta`: ENUM ('SOLO_LECTURA', 'USAR_CONTENIDO', 'USAR_PLANTILLA_CORTA') Default 'SOLO_LECTURA'
+* `categoriaId`: INT (Foreign Key -> `categorias.id`)
+* `autorId`: INT (Foreign Key -> `usuarios.id`)
+* `fechaCreacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+* `fechaActualizacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+
+### 4. `reclamos` (Módulo Reclamos)
+* `id`: INT (Primary Key, Autoincremental)
+* `titulo`: VARCHAR(200)
+* `descripcion`: TEXT
+* `categoriaId`: INT (Foreign Key -> `categorias.id`)
+* `prioridad`: ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') Default 'MEDIUM'
+* `estado`: ENUM ('PENDING', 'IN_PROGRESS', 'WAITING_INFO', 'RESOLVED', 'CLOSED', 'CANCELLED') Default 'PENDING'
+* `creadorId`: INT (Foreign Key -> `usuarios.id`)
+* `responsableId`: INT (Foreign Key -> `usuarios.id`, Nullable)
+* `reclamoRelacionadoId`: INT (Foreign Key -> `reclamos.id`, Nullable - Autoreferenciado)
+* `fechaCreacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+* `fechaActualizacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+* `fechaResolucion`: TIMESTAMP WITH TIMEZONE (Nullable)
+* `fechaCierre`: TIMESTAMP WITH TIMEZONE (Nullable)
+
+### 5. `comentarios`
+* `id`: INT (Primary Key, Autoincremental)
+* `reclamoId`: INT (Foreign Key -> `reclamos.id` ON DELETE CASCADE)
+* `usuarioId`: INT (Foreign Key -> `usuarios.id`)
+* `contenido`: TEXT
+* `fechaCreacion`: TIMESTAMP WITH TIMEZONE Default NOW()
+
+### 6. `historialReclamos` (Auditoría)
+* `id`: INT (Primary Key, Autoincremental)
+* `reclamoId`: INT (Foreign Key -> `reclamos.id` ON DELETE CASCADE)
+* `usuarioId`: INT (Foreign Key -> `usuarios.id`)
+* `accion`: VARCHAR(255) (Ej: "Creó el reclamo", "Cambió el estado a En Progreso")
+* `fecha`: TIMESTAMP WITH TIMEZONE Default NOW()
 
 ---
 
-### [ ] Etapa 3: Módulo Principal de Reclamos
-* Modelos `Reclamo`, `Prioridad`, `Estado`, `Categoria`.
-* Repositorio, Servicio y Router REST con asignaciones, cambios de estado y paginación.
+## 🚀 3. Estado de Avance por Etapas
 
----
+### [x] Etapa 1: Inicialización y Estructura Base Limpia
+* Proyecto base con FastAPI, SQLAlchemy 2.0, PostgreSQL (Supabase) y Alembic.
+* `.gitignore` configurado para seguridad.
 
-### [ ] Etapa 4: Historial de Cambios y Trazabilidad (Auditoría)
-* Modelo `HistorialReclamo`.
-* Registro automático de eventos en `ReclamoService`.
+### [x] Etapa 2: Módulo de Usuarios y Autenticación JWT (FINALIZADA)
+* Modelo `models/usuario.py` creado con `nombre` y `apellido`.
+* Migración Alembic generada e impactada en Supabase PostgreSQL.
+* Validadores DTO `schemas/usuarioSchema.py`.
+* Módulo de seguridad `core/seguridad.py` (bcrypt nativo + PyJWT).
+* Servicio `services/authService.py` con registro y login.
+* Middleware / Inyección de dependencias `api/dependencias.py` (RBAC `USER`, `OPERATOR`, `ADMIN`).
+* Controladores HTTP en `api/v1/authRouter.py` (`POST /auth/registro`, `POST /auth/login`, `GET /auth/me`).
+* Pruebas automatizadas ejecutadas exitosamente con Pytest en `tests/test_auth.py` (100% de éxito).
 
----
-
-### [ ] Etapa 5: Comentarios y Adjuntos Seguros
-* Modelo `Comentario` y subida/descarga protegida de adjuntos (validación MIME y límite 5MB).
-
----
-
-### [ ] Etapa 6: Lógica de SLA & Dashboard Backend
-* Cálculo dinámico de SLA y endpoints de métricas agregadas SQL.
-
----
-
-### [ ] Etapa 7: Setup Frontend & Autenticación UI
-* React Router, `AuthContext` y Rutas Protegidas en React TS.
-
----
-
-### [ ] Etapa 8: UI Reclamos: Listado, Filtros y Detalle
-* Tabla paginada, formulario y vista con historial y comentarios.
-
----
-
-### [ ] Etapa 9: UI Dashboard & SLA Semáforo
-* Tarjetas de resumen, gráficos e indicadores de plazo.
-
----
-
-### [ ] Etapa 10: Testing (Pytest & Frontend)
-* Pruebas automatizadas backend y componentes frontend.
-
----
-
-### [ ] Etapa 11: Infraestructura Docker
-* `Dockerfile` y `docker-compose.yml` para orquestación local.
-
----
-
-### [ ] Etapa 12: Despliegue en Vercel & README Final
-* `vercel.json` para Backend Serverless y Frontend React SPA.
+### [ ] Etapa 3: Módulo de Categorías y Documentación / Base de Conocimiento (Próximo paso)
+* Modelos `Categoria` y `ArticuloConocimiento`.
+* Migración Alembic.
+* Schemas DTOs, Servicios y Routers REST.

@@ -250,15 +250,15 @@ El backend seguirá una estructura modular, separando responsabilidades entre AP
 
 
 
-\* \[ ] Modelado de datos
+\* [x] Modelado de datos (Usuarios)
 
 
 
-\* \[ ] Autenticación y autorización
+\* [x] Autenticación y autorización (JWT + RBAC)
 
 
 
-\* \[ ] Gestión de usuarios
+\* [x] Gestión de usuarios
 
 \* \[ ] Gestión de reclamos
 

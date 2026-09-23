@@ -6,23 +6,25 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 
-# Agregar el directorio raíz del backend al sys.path para importar app
+# 1. Agregar el directorio raíz del backend al path para poder importar 'app'
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# 2. Importar configuración y la Base de los modelos
 from app.core.configuracion import configuracion
 from app.db.base import Base
 
-# Objeto de configuración de Alembic
+# 3. Importar modelos ORM creados para registrar en Base.metadata
+from app.models.usuario import Usuario  # noqa: F401
+
 config = context.config
 
-# Establecer dinámicamente la URL de conexión desde .env / configuracion
+# 4. Asignar la URL de Supabase desde configuracion.py a Alembic
 config.set_main_option("sqlalchemy.url", configuracion.databaseUrl)
 
-# Configurar logging si existe archivo ini
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Asignar los metadatos de los modelos ORM para autogeneración de migraciones
+# 5. Conectar los modelos de Python registrados en Base a Alembic
 target_metadata = Base.metadata
 
 

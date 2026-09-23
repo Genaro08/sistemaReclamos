@@ -3,8 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.configuracion import configuracion
 from app.core.excepciones import ExcepcionDominio, manejadorExcepcionDominio
 from app.api.v1.healthCheckRouter import healthCheckRouter
+from app.api.v1.authRouter import authRouter
 
-# Crear la instancia principal de la aplicación FastAPI
+# Instancia principal de FastAPI
 app = FastAPI(
     title=configuracion.proyectoNombre,
     openapi_url=f"{configuracion.apiV1Str}/openapi.json",
@@ -12,20 +13,21 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configuración de CORS para permitir peticiones desde el frontend en React
+# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción se especificará el dominio de Vercel
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Registrar manejador de excepciones de dominio
+# Registrar manejador global de excepciones de dominio
 app.add_exception_handler(ExcepcionDominio, manejadorExcepcionDominio)
 
 # Registrar routers de la API v1
 app.include_router(healthCheckRouter, prefix=configuracion.apiV1Str)
+app.include_router(authRouter, prefix=configuracion.apiV1Str)
 
 
 @app.get("/", summary="Ruta raíz de la API")
