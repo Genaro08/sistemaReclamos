@@ -177,31 +177,117 @@ def decodificarTokenAcceso(token: str) -> Optional[dict[str, Any]]:
 --------------------------------------------------------------------
 
 ====================================================================
-6. CÓMO CREAR CAPA DE SERVICIOS (app/services/)
+6. KIT STARTER REUTILIZABLE DE AUTENTICACIÓN (AUTH JWT + ROLES)
 ====================================================================
 
-La capa de servicios concentra las reglas de negocio, validaciones y consultas a la base de datos para mantener los controladores HTTP (routers) delgados y enfocados.
+Este bloque contiene el kit completo de código desacoplado para reutilizar en cualquier proyecto FastAPI.
 
-PATRÓN CÓDIGO SERVICIO (app/services/ejemploService.py):
+A. Modelo SQLAlchemy (app/models/usuario.py):
 --------------------------------------------------------------------
+import enum
+from datetime import datetime, timezone
+from sqlalchemy import String, DateTime, Enum as SQLEnum
+from sqlalchemy.orm import Mapped, mapped_column
+from app.db.base import Base
+
+class RolUsuario(str, enum.Enum):
+    USER = "USER"
+    OPERATOR = "OPERATOR"
+    ADMIN = "ADMIN"
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    nombre: Mapped[str] = mapped_column(String(75), nullable=False)
+    apellido: Mapped[str] = mapped_column(String(75), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    passwordHash: Mapped[str] = mapped_column(String(255), nullable=False)
+    rol: Mapped[RolUsuario] = mapped_column(SQLEnum(RolUsuario, name="rol_usuario_enum"), default=RolUsuario.USER, nullable=False)
+    activo: Mapped[bool] = mapped_column(default=True, nullable=False)
+    fechaCreacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+--------------------------------------------------------------------
+
+B. Esquemas DTO Pydantic (app/schemas/usuarioSchema.py):
+--------------------------------------------------------------------
+from datetime import datetime
+from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic.alias_generators import to_camel
+from app.models.usuario import RolUsuario
+
+class EsquemaBaseConfig(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
+
+class UsuarioCrear(EsquemaBaseConfig):
+    nombre: str
+    apellido: str
+    email: EmailStr
+    password: str
+
+class UsuarioRespuesta(EsquemaBaseConfig):
+    id: int
+    nombre: str
+    apellido: str
+    email: EmailStr
+    rol: RolUsuario
+    activo: bool
+    fechaCreacion: datetime
+
+class LoginEsquema(EsquemaBaseConfig):
+    email: EmailStr
+    password: str
+
+class TokenRespuesta(EsquemaBaseConfig):
+    tokenAcceso: str
+    tipoToken: str = "bearer"
+    usuario: UsuarioRespuesta
+--------------------------------------------------------------------
+
+C. Servicio Lógica de Negocio (app/services/authService.py):
+--------------------------------------------------------------------
+from fastapi import status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from app.models.usuario import Usuario
+from app.schemas.usuarioSchema import UsuarioCrear, LoginEsquema, TokenRespuesta, UsuarioRespuesta
+from app.core.seguridad import generarPasswordHash, verificarPassword, crearTokenAcceso
 from app.core.excepciones import ExcepcionDominio
 
-class EjemploService:
+class AuthService:
     def __init__(self, sesionDb: Session):
         self.sesionDb = sesionDb
 
-    def procesarReglaNegocio(self, datos):
-        pass
+    def registrarUsuario(self, datos: UsuarioCrear) -> UsuarioRespuesta:
+        consulta = select(Usuario).where(Usuario.email == datos.email.lower().strip())
+        if self.sesionDb.execute(consulta).scalar_one_or_none():
+            raise ExcepcionDominio(mensaje="Correo ya registrado", codigoEstado=status.HTTP_400_BAD_REQUEST)
+
+        nuevoUsuario = Usuario(
+            nombre=datos.nombre.strip(),
+            apellido=datos.apellido.strip(),
+            email=datos.email.lower().strip(),
+            passwordHash=generarPasswordHash(datos.password)
+        )
+        self.sesionDb.add(nuevoUsuario)
+        self.sesionDb.commit()
+        self.sesionDb.refresh(nuevoUsuario)
+        return UsuarioRespuesta.model_validate(nuevoUsuario)
+
+    def autenticarUsuario(self, datos: LoginEsquema) -> TokenRespuesta:
+        consulta = select(Usuario).where(Usuario.email == datos.email.lower().strip())
+        usuario = self.sesionDb.execute(consulta).scalar_one_or_none()
+
+        if not usuario or not verificarPassword(datos.password, usuario.passwordHash):
+            raise ExcepcionDominio(mensaje="Credenciales incorrectas", codigoEstado=status.HTTP_401_UNAUTHORIZED)
+
+        if not usuario.activo:
+            raise ExcepcionDominio(mensaje="Usuario inactivo", codigoEstado=status.HTTP_403_FORBIDDEN)
+
+        payload = {"sub": usuario.email, "id": usuario.id, "rol": usuario.rol.value}
+        return TokenRespuesta(tokenAcceso=crearTokenAcceso(payload), tipoToken="bearer", usuario=UsuarioRespuesta.model_validate(usuario))
 --------------------------------------------------------------------
 
-====================================================================
-7. CÓMO INYECTAR DEPENDENCIAS Y AUTORIZACIÓN POR ROLES (app/api/dependencias.py)
-====================================================================
-
-FastAPI utiliza el sistema de Inyección de Dependencias ('Depends') para extraer el token JWT del encabezado 'Authorization: Bearer <token>', buscar al usuario en la BD y validar sus permisos según su rol (RBAC).
-
-PATRÓN CÓDIGO DEPENDENCIAS (app/api/dependencias.py):
+D. Inyección de Dependencias y RBAC (app/api/dependencias.py):
 --------------------------------------------------------------------
 from typing import Callable
 from fastapi import Depends, status
@@ -215,20 +301,14 @@ from app.models.usuario import Usuario, RolUsuario
 
 oauth2Scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-def obtenerUsuarioActual(
-    token: str = Depends(oauth2Scheme),
-    sesionDb: Session = Depends(obtenerSesionDb)
-) -> Usuario:
+def obtenerUsuarioActual(token: str = Depends(oauth2Scheme), sesionDb: Session = Depends(obtenerSesionDb)) -> Usuario:
     payload = decodificarTokenAcceso(token)
     if not payload:
-        raise ExcepcionDominio(mensaje="Token de autenticación inválido o expirado", codigoEstado=status.HTTP_401_UNAUTHORIZED)
+        raise ExcepcionDominio(mensaje="Token inválido o expirado", codigoEstado=status.HTTP_401_UNAUTHORIZED)
 
-    usuarioId = payload.get("id")
-    consulta = select(Usuario).where(Usuario.id == usuarioId)
-    usuario = sesionDb.execute(consulta).scalar_one_or_none()
+    usuario = sesionDb.execute(select(Usuario).where(Usuario.id == payload.get("id"))).scalar_one_or_none()
     if not usuario or not usuario.activo:
         raise ExcepcionDominio(mensaje="Usuario no encontrado o inactivo", codigoEstado=status.HTTP_401_UNAUTHORIZED)
-
     return usuario
 
 def requerirRoles(rolesPermitidos: list[RolUsuario]) -> Callable:
@@ -239,37 +319,34 @@ def requerirRoles(rolesPermitidos: list[RolUsuario]) -> Callable:
     return verificadorRol
 --------------------------------------------------------------------
 
-====================================================================
-8. CÓMO CREAR Y REGISTRAR ROUTERS HTTP (app/api/v1/ & main.py)
-====================================================================
-
-Los routers de FastAPI exponen los endpoints HTTP (GET, POST, PUT, DELETE) e interactúan con la capa de servicio.
-
-PATRÓN CÓDIGO ROUTER (app/api/v1/ejemploRouter.py):
+E. Controladores HTTP (app/api/v1/authRouter.py):
 --------------------------------------------------------------------
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.db.sesion import obtenerSesionDb
+from app.services.authService import AuthService
+from app.schemas.usuarioSchema import UsuarioCrear, UsuarioRespuesta, LoginEsquema, TokenRespuesta
+from app.api.dependencias import obtenerUsuarioActual
+from app.models.usuario import Usuario
 
-ejemploRouter = APIRouter(prefix="/ejemplo", tags=["Ejemplo"])
+authRouter = APIRouter(prefix="/auth", tags=["Autenticación"])
 
-@ejemploRouter.get("", status_code=status.HTTP_200_OK)
-def listarEjemplos(sesionDb: Session = Depends(obtenerSesionDb)):
-    return {"mensaje": "Lista de ejemplos"}
---------------------------------------------------------------------
+@authRouter.post("/registro", response_model=UsuarioRespuesta, status_code=status.HTTP_201_CREATED)
+def registrarUsuario(datos: UsuarioCrear, sesionDb: Session = Depends(obtenerSesionDb)):
+    return AuthService(sesionDb).registrarUsuario(datos)
 
-REGISTRO EN main.py:
---------------------------------------------------------------------
-from app.api.v1.ejemploRouter import ejemploRouter
+@authRouter.post("/login", response_model=TokenRespuesta, status_code=status.HTTP_200_OK)
+def iniciarSesion(datos: LoginEsquema, sesionDb: Session = Depends(obtenerSesionDb)):
+    return AuthService(sesionDb).autenticarUsuario(datos)
 
-app.include_router(ejemploRouter, prefix=configuracion.apiV1Str)
+@authRouter.get("/me", response_model=UsuarioRespuesta, status_code=status.HTTP_200_OK)
+def obtenerPerfilActual(usuarioActual: Usuario = Depends(obtenerUsuarioActual)):
+    return UsuarioRespuesta.model_validate(usuarioActual)
 --------------------------------------------------------------------
 
 ====================================================================
-9. CÓMO PROBAR LA API CON PRUEBAS AUTOMATIZADAS (tests/ con Pytest)
+7. CÓMO PROBAR LA API CON PRUEBAS AUTOMATIZADAS (tests/ con Pytest)
 ====================================================================
-
-Las pruebas automatizadas aseguran que los endpoints y la seguridad funcionen sin necesidad de probar a mano en el navegador.
 
 Configuración de Pytest (backend/pytest.ini):
 --------------------------------------------------------------------
@@ -320,7 +397,7 @@ Comando para ejecutar las pruebas en la terminal:
 .\.venv\Scripts\pytest
 
 ====================================================================
-10. CÓDIGO DE ARCHIVOS BASE (COPIAR Y PEGAR)
+8. CÓDIGO DE ARCHIVOS BASE (COPIAR Y PEGAR)
 ====================================================================
 
 A. Archivo app/core/configuracion.py:
@@ -385,3 +462,54 @@ config.set_main_option("sqlalchemy.url", configuracion.databaseUrl)
 # 4. Conectar los modelos de Python registrados en Base a Alembic
 target_metadata = Base.metadata
 --------------------------------------------------------------------
+
+====================================================================
+9. MEJORAS AVANZADAS: REFRESH TOKENS, RESET PASSWORD Y ENVIADOR EMAIL
+====================================================================
+
+A. Esquema de Respuesta Paginada Genérica (app/schemas/paginacionSchema.py):
+--------------------------------------------------------------------
+from typing import Generic, List, TypeVar
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
+T = TypeVar('T')
+
+class RespuestaPaginada(BaseModel, Generic[T]):
+    elementos: List[T]
+    total: int
+    pagina: int
+    tamanoPagina: int
+    totalPaginas: int
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+--------------------------------------------------------------------
+
+B. Módulo Enviador de Emails SMTP / Mock (app/core/email.py):
+--------------------------------------------------------------------
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from app.core.configuracion import configuracion
+
+def enviarEmail(emailA: str, asunto: str, contenidoHtml: str) -> bool:
+    if not configuracion.smtpHost or not configuracion.smtpUser:
+        print(f"[EMAIL MOCK] Para: {emailA} | Asunto: {asunto}\n{contenidoHtml}")
+        return True
+    try:
+        mensaje = MIMEMultipart("alternative")
+        mensaje["Subject"] = asunto
+        mensaje["From"] = f"{configuracion.emailsFromName} <{configuracion.emailsFromEmail}>"
+        mensaje["To"] = emailA
+        mensaje.attach(MIMEText(contenidoHtml, "html", "utf-8"))
+        with smtplib.SMTP(configuracion.smtpHost, configuracion.smtpPort) as servidor:
+            servidor.starttls()
+            if configuracion.smtpPassword:
+                servidor.login(configuracion.smtpUser, configuracion.smtpPassword)
+            servidor.sendmail(configuracion.emailsFromEmail, [emailA], mensaje.as_string())
+        return True
+    except Exception as e:
+        print(f"Error enviando email: {e}")
+        return False
+--------------------------------------------------------------------
+

@@ -31,6 +31,7 @@ class Usuario(Base):
         nullable=False
     )
     activo: Mapped[bool] = mapped_column(default=True, nullable=False)
+    refreshToken: Mapped[str | None] = mapped_column(String(500), nullable=True)
     fechaCreacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -20,7 +20,18 @@ class Configuracion(BaseSettings):
     # Seguridad y tokens JWT
     secretKey: str = Field(default="clave_desarrollo_reclamos_jwt_secret_key_2026", validation_alias="SECRET_KEY")
     algoritmo: str = Field(default="HS256", validation_alias="ALGORITMO")
-    minutosExpiracionToken: int = Field(default=1440, validation_alias="MINUTOS_EXPIRACION_TOKEN")
+    minutosExpiracionToken: int = Field(default=30, validation_alias="MINUTOS_EXPIRACION_TOKEN")
+    refreshTokenExpireDays: int = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
+    emailResetTokenExpireHours: int = Field(default=24, validation_alias="EMAIL_RESET_TOKEN_EXPIRE_HOURS")
+
+    # Email SMTP
+    smtpHost: str | None = Field(default=None, validation_alias="SMTP_HOST")
+    smtpPort: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtpUser: str | None = Field(default=None, validation_alias="SMTP_USER")
+    smtpPassword: str | None = Field(default=None, validation_alias="SMTP_PASSWORD")
+    emailsFromEmail: str = Field(default="noreply@reclamos.com", validation_alias="EMAILS_FROM_EMAIL")
+    emailsFromName: str = Field(default="Sistema de Reclamos", validation_alias="EMAILS_FROM_NAME")
+    frontendUrl: str = Field(default="http://localhost:5173", validation_alias="FRONTEND_URL")
 
     model_config = SettingsConfigDict(
         env_file=".env",

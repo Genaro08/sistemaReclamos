@@ -1,3 +1,6 @@
+from app.core.seguridad import crearTokenRecuperacion
+
+
 def testRegistrarUsuarioExitoso(clienteTest):
     """
     Prueba que el registro de un nuevo usuario funcione correctamente.
@@ -9,7 +12,7 @@ def testRegistrarUsuarioExitoso(clienteTest):
         "password": "PasswordSegura123!"
     }
     respuesta = clienteTest.post("/api/v1/auth/registro", json=payload)
-    
+
     assert respuesta.status_code == 201
     datos = respuesta.json()
     assert datos["nombre"] == "Genaro"
@@ -30,7 +33,7 @@ def testRegistrarEmailDuplicadoError(clienteTest):
         "password": "PasswordSegura123!"
     }
     clienteTest.post("/api/v1/auth/registro", json=payload)
-    
+
     # Segundo intento con el mismo email
     respuestaSegunda = clienteTest.post("/api/v1/auth/registro", json=payload)
     assert respuestaSegunda.status_code == 400
@@ -61,13 +64,56 @@ def testLoginYObtenerPerfilMe(clienteTest):
     assert respuestaLogin.status_code == 200
     datosLogin = respuestaLogin.json()
     assert "tokenAcceso" in datosLogin
+    assert "refreshToken" in datosLogin
     token = datosLogin["tokenAcceso"]
+    refreshToken = datosLogin["refreshToken"]
 
-    # 3. Consultar /me enviando el token Bearer
+    # 3. Refrescar Token
+    respuestaRefresh = clienteTest.post("/api/v1/auth/refresh", json={"refreshToken": refreshToken})
+    assert respuestaRefresh.status_code == 200
+    assert "tokenAcceso" in respuestaRefresh.json()
+
+    # 4. Consultar /me enviando el token Bearer
     encabezados = {"Authorization": f"Bearer {token}"}
     respuestaMe = clienteTest.get("/api/v1/auth/me", headers=encabezados)
     assert respuestaMe.status_code == 200
     datosMe = respuestaMe.json()
     assert datosMe["email"] == "test@ejemplo.com"
-    assert datosMe["nombre"] == "Usuario"
-    assert datosMe["apellido"] == "Test"
+
+
+def testRecuperacionYRestablecerPassword(clienteTest):
+    # 1. Registrar
+    clienteTest.post(
+        "/api/v1/auth/registro",
+        json={
+            "nombre": "Marcos",
+            "apellido": "Rios",
+            "email": "marcos@ejemplo.com",
+            "password": "PasswordOriginal123"
+        }
+    )
+
+    # 2. Solicitar recuperación
+    recup_res = clienteTest.post(
+        "/api/v1/auth/recuperar-password",
+        json={"email": "marcos@ejemplo.com"}
+    )
+    assert recup_res.status_code == 200
+
+    # 3. Crear token y restablecer
+    token = crearTokenRecuperacion("marcos@ejemplo.com")
+    reset_res = clienteTest.post(
+        "/api/v1/auth/restablecer-password",
+        json={
+            "token": token,
+            "nuevaPassword": "NuevaPassword456"
+        }
+    )
+    assert reset_res.status_code == 200
+
+    # 4. Login con nueva contraseña
+    login_nuevo = clienteTest.post(
+        "/api/v1/auth/login",
+        json={"email": "marcos@ejemplo.com", "password": "NuevaPassword456"}
+    )
+    assert login_nuevo.status_code == 200

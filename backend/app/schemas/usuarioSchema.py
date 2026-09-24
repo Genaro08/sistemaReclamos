@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
 from app.models.usuario import RolUsuario
 
@@ -22,7 +22,7 @@ class UsuarioCrear(EsquemaBaseConfig):
     nombre: str
     apellido: str
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, max_length=100)
 
 
 class UsuarioRespuesta(EsquemaBaseConfig):
@@ -48,8 +48,22 @@ class LoginEsquema(EsquemaBaseConfig):
 
 class TokenRespuesta(EsquemaBaseConfig):
     """
-    DTO para retornar el token de acceso JWT al cliente tras autenticación.
+    DTO para retornar los tokens JWT de acceso y renovación al cliente.
     """
     tokenAcceso: str
+    refreshToken: str
     tipoToken: str = "bearer"
     usuario: UsuarioRespuesta
+
+
+class RefreshTokenEsquema(EsquemaBaseConfig):
+    refreshToken: str
+
+
+class SolicitudRecuperacionPassword(EsquemaBaseConfig):
+    email: EmailStr
+
+
+class RestablecerPasswordEsquema(EsquemaBaseConfig):
+    token: str
+    nuevaPassword: str = Field(..., min_length=6, max_length=100)
