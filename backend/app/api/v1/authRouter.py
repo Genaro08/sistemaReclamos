@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.api.dependencias import obtenerUsuarioActual
 from app.db.sesion import obtenerSesionDb
-from app.models.usuario import Usuario
+from app.models.usuarioModelo import Usuario
 from app.schemas.usuarioSchema import (
     LoginEsquema,
     RefreshTokenEsquema,

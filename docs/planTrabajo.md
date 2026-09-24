@@ -118,8 +118,8 @@ backend/
 * Pruebas automatizadas con Pytest (100% de éxito).
 
 ### [ ] Etapa 3: Definición Incremental de Modelos ORM (EN PROGRESO)
-* [ ] Modelo 1: `Categoria` (`app/models/categoria.py`)
-* [ ] Modelo 2: `ArticuloConocimiento` y `articulos_relacionados` (`app/models/articuloConocimiento.py`)
+* [x] Modelo 1: `Categoria` (`app/models/categoria.py`)
+* [x] Modelo 2: `ArticuloConocimiento` y `articulos_relacionados` (`app/models/articuloConocimiento.py`)
 * [ ] Modelo 3: `PlantillaRespuesta` (`app/models/plantillaRespuesta.py`)
 * [ ] Modelo 4: `Reclamo` y Enums `EstadoReclamo`, `PrioridadReclamo` (`app/models/reclamo.py`)
 * [ ] Modelo 5: `Comentario` (`app/models/comentario.py`)

@@ -11,7 +11,7 @@ from app.core.seguridad import (
     verificarPassword,
     verificarTokenRecuperacion,
 )
-from app.models.usuario import Usuario
+from app.models.usuarioModelo import Usuario
 from app.schemas.usuarioSchema import LoginEsquema, TokenRespuesta, UsuarioCrear, UsuarioRespuesta
 
 

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.db.sesion import obtenerSesionDb
 from app.core.seguridad import decodificarTokenAcceso
 from app.core.excepciones import ExcepcionDominio
-from app.models.usuario import Usuario, RolUsuario
+from app.models.usuarioModelo import Usuario, RolUsuario
 
 # Esquema de autenticación Bearer Token en OpenAPI / Swagger
 oauth2Scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")

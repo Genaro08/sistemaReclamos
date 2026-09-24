@@ -14,7 +14,10 @@ from app.core.configuracion import configuracion
 from app.db.base import Base
 
 # 3. Importar modelos ORM creados para registrar en Base.metadata
-from app.models.usuario import Usuario  # noqa: F401
+from app.models.usuarioModelo import Usuario  # noqa: F401
+from app.models.categoriaModelo import Categoria  # noqa: F401
+from app.models.articuloRelacionadoModelo import articulos_relacionados  # noqa: F401
+from app.models.articuloConocimientoModelo import ArticuloConocimiento  # noqa: F401
 
 config = context.config
 

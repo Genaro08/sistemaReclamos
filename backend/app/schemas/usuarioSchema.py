@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
-from app.models.usuario import RolUsuario
+from app.models.usuarioModelo import RolUsuario
 
 
 class EsquemaBaseConfig(BaseModel):

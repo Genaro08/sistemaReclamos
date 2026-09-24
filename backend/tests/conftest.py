@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.db.base import Base
 from app.db.sesion import obtenerSesionDb
-from app.models.usuario import Usuario  # noqa: F401
+from app.models.usuarioModelo import Usuario  # noqa: F401
 
 # Base de datos SQLite en memoria con StaticPool para mantener viva la BD durante el test
 MOTOR_TEST_DB = create_engine(
