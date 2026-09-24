@@ -18,6 +18,7 @@ from app.models.usuarioModelo import Usuario  # noqa: F401
 from app.models.categoriaModelo import Categoria  # noqa: F401
 from app.models.articuloRelacionadoModelo import articulos_relacionados  # noqa: F401
 from app.models.articuloConocimientoModelo import ArticuloConocimiento  # noqa: F401
+from app.models.plantillaRespuestaModelo import PlantillaRespuesta  # noqa: F401
 
 config = context.config
 
