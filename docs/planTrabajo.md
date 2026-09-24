@@ -122,8 +122,8 @@ backend/
 * [x] Modelo 2: `ArticuloConocimiento` (`app/models/articuloConocimientoModelo.py`) y `articulos_relacionados` (`app/models/articuloRelacionadoModelo.py`)
 * [x] Modelo 3: `PlantillaRespuesta` (`app/models/plantillaRespuestaModelo.py`)
 * [x] Modelo 4: `Reclamo` y Enums `EstadoReclamo`, `PrioridadReclamo` (`app/models/reclamoModelo.py`)
-* [ ] Modelo 5: `Comentario` (`app/models/comentario.py`)
-* [ ] Modelo 6: `HistorialReclamo` (`app/models/historialReclamo.py`)
+* [x] Modelo 5: `Comentario` (`app/models/comentarioModelo.py`)
+* [x] Modelo 6: `HistorialReclamo` (`app/models/historialReclamoModelo.py`)
 * [ ] Generar migración Alembic global e impactar en Supabase PostgreSQL.
 
 ### [ ] Etapa 4: Servicios, Schemas, Routers y Pruebas Automatizadas
