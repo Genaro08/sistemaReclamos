@@ -124,7 +124,7 @@ backend/
 * [x] Modelo 4: `Reclamo` y Enums `EstadoReclamo`, `PrioridadReclamo` (`app/models/reclamoModelo.py`)
 * [x] Modelo 5: `Comentario` (`app/models/comentarioModelo.py`)
 * [x] Modelo 6: `HistorialReclamo` (`app/models/historialReclamoModelo.py`)
-* [ ] Generar migración Alembic global e impactar en Supabase PostgreSQL.
+* [x] Generar migración Alembic global e impactar en Supabase PostgreSQL.
 
 ### [ ] Etapa 4: Servicios, Schemas, Routers y Pruebas Automatizadas
 * Schemas DTOs, Servicios y Routers REST para Categorías, Base de Conocimiento y Reclamos con cálculo de % de coincidencia.
