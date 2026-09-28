@@ -126,5 +126,11 @@ backend/
 * [x] Modelo 6: `HistorialReclamo` (`app/models/historialReclamoModelo.py`)
 * [x] Generar migración Alembic global e impactar en Supabase PostgreSQL.
 
-### [ ] Etapa 4: Servicios, Schemas, Routers y Pruebas Automatizadas
-* Schemas DTOs, Servicios y Routers REST para Categorías, Base de Conocimiento y Reclamos con cálculo de % de coincidencia.
+### [ ] Etapa 4: Servicios, Schemas, Routers y Pruebas Automatizadas (EN PROGRESO)
+* [x] **Módulo 1: Categorías / Conceptos (FINALIZADO 100%)**
+  - Schemas: `app/schemas/categoriaSchema.py`
+  - Servicio: `app/services/categoriaService.py`
+  - Router: `app/api/v1/categoriaRouter.py` (registrado en `main.py`)
+  - Tests: `tests/test_categorias.py` (3/3 tests pasados)
+* [ ] **Módulo 2: Base de Conocimiento (Artículos + Plantillas de Respuesta)**
+* [ ] **Módulo 3: Reclamos y Auditoría (Tickets + Comentarios + Historial)**

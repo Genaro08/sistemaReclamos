@@ -120,7 +120,14 @@ PASO 3: ROUTER / CONTROLADOR HTTP (`app/api/v1/*Router.py` y `app/main.py`)
 - Definición de las rutas REST con decoradores de FastAPI (`@router.get`, `@router.post`, `@router.put`, `@router.delete`).
 - Inyección de dependencias para sesión de BD (`db: Session = Depends(obtenerSesionDb)`) y seguridad por roles RBAC (`usuarioActual = Depends(requerirRoles([RolUsuario.ADMIN]))`).
 - Especificación del modelo de respuesta `response_model` y status codes HTTP (ej: `201 CREATED`, `200 OK`, `404 NOT FOUND`).
-- Registro del router en la aplicación principal en `app/main.py` mediante `app.include_router(...)`.
+- **Registro en `app/main.py` (OBLIGATORIO):** Cada nuevo router creado debe importarse e incluirse en `main.py`:
+  ```python
+  # 1. Importar el nuevo router
+  from app.api.v1.categoriaRouter import categoriaRouter
+
+  # 2. Registrar el router con el prefijo global
+  app.include_router(categoriaRouter, prefix=configuracion.apiV1Str)
+  ```
 
 PASO 4: PRUEBAS AUTOMATIZADAS (`tests/test_*.py`)
 -------------------------------------------------

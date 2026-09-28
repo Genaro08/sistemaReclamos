@@ -4,6 +4,7 @@ from app.core.configuracion import configuracion
 from app.core.excepciones import ExcepcionDominio, manejadorExcepcionDominio
 from app.api.v1.healthCheckRouter import healthCheckRouter
 from app.api.v1.authRouter import authRouter
+from app.api.v1.categoriaRouter import categoriaRouter
 
 # Instancia principal de FastAPI
 app = FastAPI(
@@ -28,6 +29,7 @@ app.add_exception_handler(ExcepcionDominio, manejadorExcepcionDominio)
 # Registrar routers de la API v1
 app.include_router(healthCheckRouter, prefix=configuracion.apiV1Str)
 app.include_router(authRouter, prefix=configuracion.apiV1Str)
+app.include_router(categoriaRouter, prefix=configuracion.apiV1Str)
 
 
 @app.get("/", summary="Ruta raíz de la API")
