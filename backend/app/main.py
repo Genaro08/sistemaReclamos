@@ -6,6 +6,7 @@ from app.api.v1.healthCheckRouter import healthCheckRouter
 from app.api.v1.authRouter import authRouter
 from app.api.v1.categoriaRouter import categoriaRouter
 from app.api.v1.articuloRouter import articuloRouter
+from app.api.v1.reclamoRouter import reclamoRouter
 
 # Instancia principal de FastAPI
 app = FastAPI(
@@ -32,6 +33,8 @@ app.include_router(healthCheckRouter, prefix=configuracion.apiV1Str)
 app.include_router(authRouter, prefix=configuracion.apiV1Str)
 app.include_router(categoriaRouter, prefix=configuracion.apiV1Str)
 app.include_router(articuloRouter, prefix=configuracion.apiV1Str)
+app.include_router(reclamoRouter, prefix=configuracion.apiV1Str)
+
 
 
 
