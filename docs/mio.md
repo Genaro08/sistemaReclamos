@@ -135,3 +135,28 @@ PASO 4: PRUEBAS AUTOMATIZADAS (`tests/test_*.py`)
 - Escenarios de éxito: Peticiones legítimas con status `200` o `201`.
 - Escenarios de error: Peticiones duplicadas, datos inválidos o acceso sin permisos retornando `400`, `401` o `403`.
 - Ejecución rápida en la base de datos aislada en memoria RAM (`sqlite:///:memory:`) con el comando: `.\.venv\Scripts\pytest`.
+
+--------------------------------------------------------------------------------
+11: ARQUITECTURA DE SUB-RECURSOS, ENTIDADES DÉBILES Y COHESIÓN EN SERVICIOS
+--------------------------------------------------------------------------------
+En el diseño del sistema existen entidades secundarias o dependientes que no tienen sentido de negocio por sí solas, sino únicamente asociadas a una entidad principal:
+
+- Ejemplos de Entidades Débiles / Sub-recursos:
+  * `PlantillaRespuesta` -> Pertenece a un `ArticuloConocimiento`
+  * `Comentario` e `HistorialReclamo` -> Pertenecen a un `Reclamo`
+
+PRINCIPIOS DE DISEÑO APLICADOS:
+
+1. Jerarquía REST en Rutas:
+   En lugar de exponer controladores independientes sueltos, los sub-recursos se exponen jerárquicamente bajo la entidad padre:
+   - `POST /api/v1/articulos/{articuloId}/plantillas`
+   - `POST /api/v1/reclamos/{reclamoId}/comentarios`
+   - `GET /api/v1/reclamos/{reclamoId}/historial`
+
+2. Cohesión en el Servicio de Negocio (`*Service.py`):
+   La lógica de negocio de los sub-recursos se encapsula en el servicio principal (`articuloService.py` y `reclamoService.py`). 
+   - Ventaja: Evita crear micro-servicios redundantes y acoplamiento cruzado. Por ejemplo, al cambiar de estado o asignar un técnico en `reclamoService.py`, el mismo servicio registra automáticamente la auditoría en la tabla `historialReclamos`.
+
+3. Separación Modular de Schemas (`*Schema.py`):
+   A diferencia de los servicios y routers, los DTOs de Pydantic SÍ se organizan en archivos de schema dedicados (`plantillaSchema.py`, `comentarioSchema.py`, `historialSchema.py`).
+   - Ventaja: Evita archivos gigantes de cientos de líneas, mejora el tipado estricto en FastAPI (`response_model`) y facilita la importación limpia de modelos anidados.
