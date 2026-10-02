@@ -180,4 +180,78 @@ FASE 4: ENSAMBLADO DE PÁGINAS Y RUTAS
 --------------------------------------
 - Vistas completas por módulo (`CategoriasPage.tsx`, `BaseConocimientoPage.tsx`, `ReclamosPage.tsx`) integradas en `RutasApp.tsx` con `RutaProtegida.tsx`.
 
+--------------------------------------------------------------------------------
+8: CRITERIO DE DISEÑO: SCHEMAS (BACKEND) VS TYPES (FRONTEND)
+--------------------------------------------------------------------------------
+
+A. ¿A PARTIR DE QUÉ IDEA SE CREAN LOS SCHEMAS Y TYPES?
+-------------------------------------------------------
+No se crea 1 sola interfaz por Tabla o Modelo ORM de Base de Datos.
+Tanto en el Backend (Pydantic DTOs) como en el Frontend (TypeScript Interfaces), se crean interfaces separadas según el TIPO DE OPERACIÓN HTTP (Caso de Uso):
+
+1. DTO de Lectura / Respuesta (`GET`):
+   - Contiene la información completa del recurso retornada por la API: `id` autoincremental, `fechaCreacion`, `vecesUtilizado` y las relaciones anidadas pobladas (ej: `categoria: Categoria`).
+   - Backend Python: `ArticuloRespuestaSchema`
+   - Frontend TypeScript: `interface Articulo`
+
+2. DTO de Creación (`POST`):
+   - Exige únicamente los campos requeridos para insertar un nuevo registro. NO incluye `id`, `fechaCreacion` ni objetos anidados completos (usa sólo claves foráneas como `categoriaId` o listas de IDs `articulosRelacionadosIds`).
+   - Backend Python: `ArticuloCrear`
+   - Frontend TypeScript: `interface SolicitudCrearArticulo`
+
+3. DTO de Edición / Actualización Parcial (`PUT` / `PATCH`):
+   - Posee todos los campos opcionales (`?` en TS, `Optional` en Python) para permitir editar propiedades individuales sin obligar a reenviar todo el cuerpo técnico.
+   - Backend Python: `ArticuloActualizar`
+   - Frontend TypeScript: `interface SolicitudActualizarArticulo`
+
+B. BENEFICIO EN EL DESARROLLO FRONTEND:
+----------------------------------------
+Tipar las solicitudes (`SolicitudCrear*`, `SolicitudActualizar*`) garantiza autocompletado perfecto y validación en tiempo de compilación. Si el desarrollador olvida un campo obligatorio antes de un `POST` o intenta enviar una propiedad no permitida, TypeScript marca el error inmediatamente en el editor antes de realizar la petición HTTP.
+
+--------------------------------------------------------------------------------
+9: ANATOMÍA Y ESTRUCTURA DE LA CAPA DE SERVICIOS API (`src/api/*.ts`)
+--------------------------------------------------------------------------------
+
+A. ESTRUCTURA INTERNA DE UN SERVICIO API:
+------------------------------------------
+Cada módulo de la aplicación posee su propio archivo de servicio (`authApi.ts`, `categoriaApi.ts`, `articuloApi.ts`, `reclamoApi.ts`). Todos consumen la misma instancia centralizada de `clienteAxios`.
+
+Ejemplo de desglose línea por línea (`categoriaApi.ts`):
+
+```typescript
+import { clienteAxios } from './clienteAxios';
+import type { Categoria, SolicitudCrearCategoria } from '../types/categoria';
+
+export const categoriaApi = {
+  // Petición GET con Query Parameter opcional (?soloActivas=true)
+  async obtenerCategorias(soloActivas: boolean = false): Promise<Categoria[]> {
+    const respuesta = await clienteAxios.get<Categoria[]>('/categorias', {
+      params: { soloActivas }
+    });
+    return respuesta.data; // Retorna únicamente el cuerpo JSON de la respuesta
+  },
+
+  // Petición POST enviando cuerpo JSON tipado
+  async crearCategoria(datos: SolicitudCrearCategoria): Promise<Categoria> {
+    const respuesta = await clienteAxios.post<Categoria>('/categorias', datos);
+    return respuesta.data;
+  },
+
+  // Petición PUT inyectando Path Parameter dinámico (/categorias/5)
+  async actualizarCategoria(categoriaId: number, datos: SolicitudActualizarCategoria): Promise<Categoria> {
+    const respuesta = await clienteAxios.put<Categoria>(`/categorias/${categoriaId}`, datos);
+    return respuesta.data;
+  }
+};
+```
+
+B. SEGURIDAD RBAC: FRONTEND VS BACKEND
+---------------------------------------
+1. En el Backend (Seguridad Estricta / Garantía de Acceso):
+   FastAPI intercepta el JWT Bearer Token y verifica mediante `Depends(requerirRoles([RolUsuario.ADMIN]))` si el usuario posee el rol requerido. Si no lo posee, la petición rebota con status HTTP 403 Forbidden.
+2. En el Frontend (Experiencia de Usuario / UX):
+   Los roles guardados en `usuario.rol` se utilizan en React únicamente para personalizar la interfaz visual (mostrar u ocultar botones de edición/creación). Aunque un usuario intente invocar la función de la API desde la consola del navegador, la seguridad del backend impedirá la operación.
+
+
+
 
