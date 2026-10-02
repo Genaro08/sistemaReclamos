@@ -157,10 +157,27 @@ A. EXPLICACIÓN FÁCIL Y ENTENDIBLE DE CADA ARCHIVO:
 --------------------------------------------------------------------------------
 B. ARQUITECTURA DE CSS: ¿CÓMO EVITAR QUE `index.css` CREZCA DESMESURADAMENTE?
 --------------------------------------------------------------------------------
-En aplicaciones profesionales se evita colocar todo el CSS en un solo archivo `index.css`. La mejor práctica recomendada es:
+--------------------------------------------------------------------------------
+7: PLAN MASTER DE ARQUITECTURA FRONTEND EN 4 FASES
+--------------------------------------------------------------------------------
+Para garantizar un desarrollo escalable y profesional, el frontend se construye siguiendo una arquitectura Bottom-Up (De los cimientos a las páginas):
 
-1. `index.css` (Ligero): Mantiene únicamente variables CSS globales (`--primary`, `--bg-card`), resets de margen/padding y fuentes.
-2. CSS por Módulo / Componente (ej: `AuthPages.css` o CSS Modules `LoginPage.module.css`):
-   Cada pantalla o módulo funcional importa su propio archivo de estilos.
-   - Vite soporta **CSS Modules** de forma nativa (`.module.css`), lo que genera nombres de clases únicos y evita colisiones de estilos entre páginas distintas.
+FASE 1: CONTRATOS DE DATOS Y SERVICIOS API
+-------------------------------------------
+- 1.1 Interfaces TypeScript (`src/types/`): `usuario.ts`, `categoria.ts`, `articulo.ts`, `reclamo.ts`.
+- 1.2 Servicios de Red (`src/api/`): `authApi.ts`, `categoriaApi.ts`, `articuloApi.ts`, `reclamoApi.ts`.
+
+FASE 2: COMPONENTES ATÓMICOS Y LAYOUT ESTRUCTURAL
+--------------------------------------------------
+- 2.1 Componentes UI Atómicos Reutilizables (`src/components/common/`): `InsigniaEstado.tsx`, `InsigniaPrioridad.tsx`, `Modal.tsx`, `Cargando.tsx`.
+- 2.2 Layout Estructural (`src/components/layout/`): `Navbar.tsx`, `Sidebar.tsx`, `LayoutPrincipal.tsx`.
+
+FASE 3: HOOKS PERSONALIZADOS DE ESTADO DE DATOS
+-------------------------------------------------
+- Encapsulamiento de lógica de consulta, filtrado y mutación con reactividad (`useReclamos`, `useArticulos`).
+
+FASE 4: ENSAMBLADO DE PÁGINAS Y RUTAS
+--------------------------------------
+- Vistas completas por módulo (`CategoriasPage.tsx`, `BaseConocimientoPage.tsx`, `ReclamosPage.tsx`) integradas en `RutasApp.tsx` con `RutaProtegida.tsx`.
+
 
